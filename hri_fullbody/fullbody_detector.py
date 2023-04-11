@@ -187,7 +187,7 @@ class FullbodyDetector():
         self.skeleton_to_set = single_body
 
         self.detector = mp_holistic.Holistic(
-            min_detection_confidence=min_detection, static_image_mode=False)
+            min_detection_confidence=min_detection, static_image_mode=True)
 
         self.from_depth_image = False
 
@@ -729,21 +729,32 @@ class FullbodyDetector():
 
         t = header.stamp.nanosec / 1e9
 
+        self.node.get_logger().debug(f'time:  {header.stamp.nanosec}')
+
         if not self.one_euro_filter[0] and self.use_depth:
             self.node.get_logger().debug(f'torso res 2 {torso_res[2]}')
             self.one_euro_filter[0] = OneEuroFilter(
-                t, 
-                torso_res[2], 
-                beta=BETA_POSITION, 
-                d_cutoff=D_CUTOFF_POSITION, 
-                min_cutoff=MIN_CUTOFF_POSITION)
-            self.node.get_logger().debug(f'torso res 0 {torso_res[0]}')
-            self.one_euro_filter[1] = OneEuroFilter(
                 t, 
                 torso_res[0], 
                 beta=BETA_POSITION, 
                 d_cutoff=D_CUTOFF_POSITION, 
                 min_cutoff=MIN_CUTOFF_POSITION)
+            self.node.get_logger().debug(f'torso res 0 {torso_res[0]}')
+
+            self.one_euro_filter[1] = OneEuroFilter(
+                t, 
+                torso_res[1], 
+                beta=BETA_POSITION, 
+                d_cutoff=D_CUTOFF_POSITION, 
+                min_cutoff=MIN_CUTOFF_POSITION)
+            
+            self.one_euro_filter[2] = OneEuroFilter(
+                t, 
+                torso_res[2], 
+                beta=BETA_POSITION, 
+                d_cutoff=D_CUTOFF_POSITION, 
+                min_cutoff=MIN_CUTOFF_POSITION)
+            
             self.node.get_logger().debug('got here')
             self.node.get_logger().debug(f'time res {t}')
             self.node.get_logger().debug(f'torso res {torso_res[0]}')
@@ -757,9 +768,9 @@ class FullbodyDetector():
             self.body_filtered_position_prev[1] = self.body_filtered_position[1]
             self.body_filtered_position_prev[2] = self.body_filtered_position[2]
 
-            self.body_filtered_position[0], _ = self.one_euro_filter[0](t, torso_res[0])
+            self.body_filtered_position[0], t_e = self.one_euro_filter[0](t, torso_res[0])
             self.body_filtered_position[1], _ = self.one_euro_filter[1](t, torso_res[1])
-            self.body_filtered_position[2], t_e = self.one_euro_filter[0](t, torso_res[2])
+            self.body_filtered_position[2], _ = self.one_euro_filter[2](t, torso_res[2])
 
             self.node.get_logger().debug(f'one euro {(t, torso_res[2])}')
             self.node.get_logger().debug(f'body filtered {self.body_filtered_position}')

@@ -31,6 +31,7 @@ def smoothing_factor(t_e, cutoff):
 
 
 def exponential_smoothing(a, x, x_prev):
+    # print([a, x, x_prev])
     return a * x + (1 - a) * x_prev
 
 
@@ -55,7 +56,9 @@ class OneEuroFilter:
 
         # The filtered derivative of the signal.
         a_d = smoothing_factor(t_e, self.d_cutoff)
+        # print(f'[before dx]: {[x, self.x_prev, t_e]}')
         dx = (x - self.x_prev) / t_e
+
         dx_hat = exponential_smoothing(a_d, dx, self.dx_prev)
 
         # The filtered signal.
@@ -68,4 +71,5 @@ class OneEuroFilter:
         self.dx_prev = dx_hat
         self.t_prev = t
 
+        
         return x_hat, t_e
