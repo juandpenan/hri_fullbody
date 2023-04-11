@@ -330,8 +330,8 @@ class FullbodyDetector():
                 "/humans/bodies/"+body_id+"/roi",
                 1)
 
-        self.body_filtered_position = [None] * 3
-        self.body_filtered_position_prev = [None] * 3
+        self.body_filtered_position = [None] * 3  # x, y ,z
+        self.body_filtered_position_prev = [None] * 3 # x, y, z
         self.body_vel_estimation = [None] * 3
         self.body_vel_estimation_filtered = [None] * 3
 
@@ -708,7 +708,7 @@ class FullbodyDetector():
                 self.image_depth,
                 self.roi.x_offset,
                 self.roi.y_offset
-            )
+            )            
             self.node.get_logger().debug(f'torso_res {torso_res}')
             if torso_res.any() == None:
                 if torso_res_prev.all() != None:
@@ -748,37 +748,55 @@ class FullbodyDetector():
             self.node.get_logger().debug(f'time res {t}')
             self.node.get_logger().debug(f'torso res {torso_res[0]}')
             self.node.get_logger().debug(f'torso res {torso_res[2]}')
-            self.body_filtered_position[0] = torso_res[2]
-            self.body_filtered_position[1] = torso_res[0]
+            self.body_filtered_position[0] = torso_res[1]
+            self.body_filtered_position[1] = torso_res[1]
+            self.body_filtered_position[2] = torso_res[2]
+
         elif self.use_depth:
             self.body_filtered_position_prev[0] = self.body_filtered_position[0]
             self.body_filtered_position_prev[1] = self.body_filtered_position[1]
-            self.body_filtered_position[0], t_e = self.one_euro_filter[0](t, torso_res[2])
-            self.body_filtered_position[1], _ = self.one_euro_filter[1](t, torso_res[0])
+            self.body_filtered_position_prev[2] = self.body_filtered_position[2]
+
+            self.body_filtered_position[0], _ = self.one_euro_filter[0](t, torso_res[0])
+            self.body_filtered_position[1], _ = self.one_euro_filter[1](t, torso_res[1])
+            self.body_filtered_position[2], t_e = self.one_euro_filter[0](t, torso_res[2])
+
             self.node.get_logger().debug(f'one euro {(t, torso_res[2])}')
             self.node.get_logger().debug(f'body filtered {self.body_filtered_position}')
-            self.position_msg.point.z = self.body_filtered_position[0]
+
+            self.position_msg.point.x = self.body_filtered_position[0]
             self.position_msg.point.y = 0.0
-            self.position_msg.point.x = self.body_filtered_position[1]
+            self.position_msg.point.z = self.body_filtered_position[2]
+
             self.position_msg.header.stamp = self.node.get_clock().now().to_msg()
             self.position_msg.header.frame_id = header.frame_id
             self.body_filtered_position_pub.publish(self.position_msg)
             
             self.node.get_logger().debug(f't_e {t_e}')
+
             self.body_vel_estimation[0] = (self.body_filtered_position[0] - self.body_filtered_position_prev[0]) / t_e
             self.body_vel_estimation[1] = (self.body_filtered_position[1] - self.body_filtered_position_prev[1]) / t_e
+            self.body_vel_estimation[2] = (self.body_filtered_position[2] - self.body_filtered_position_prev[2]) / t_e
 
             if not self.one_euro_filter_dot[0]:
                 self.node.get_logger().debug(f'body vel {self.body_vel_estimation}')
+
                 self.one_euro_filter_dot[0] = OneEuroFilter(
                     t, 
                     self.body_vel_estimation[0], 
                     beta=BETA_VELOCITY, 
                     d_cutoff=D_CUTOFF_VELOCITY, 
                     min_cutoff=MIN_CUTOFF_VELOCITY)
+                
                 self.one_euro_filter_dot[1] = OneEuroFilter(
                     t, 
                     self.body_vel_estimation[1], 
+                    beta=BETA_VELOCITY, 
+                    d_cutoff=D_CUTOFF_VELOCITY, 
+                    min_cutoff=MIN_CUTOFF_VELOCITY)
+                self.one_euro_filter_dot[2] = OneEuroFilter(
+                    t, 
+                    self.body_vel_estimation[2], 
                     beta=BETA_VELOCITY, 
                     d_cutoff=D_CUTOFF_VELOCITY, 
                     min_cutoff=MIN_CUTOFF_VELOCITY)
@@ -787,10 +805,16 @@ class FullbodyDetector():
                     self.one_euro_filter_dot[0](t, self.body_vel_estimation[0])
                 self.body_vel_estimation_filtered[1], _ = \
                     self.one_euro_filter_dot[1](t, self.body_vel_estimation[1])
+                self.body_vel_estimation_filtered[2], _ = \
+                    self.one_euro_filter_dot[2](t, self.body_vel_estimation[2])
+                
                 self.velocity_msg.twist.linear.x = \
                     -self.body_vel_estimation_filtered[0]
                 self.velocity_msg.twist.linear.y = \
                     self.body_vel_estimation_filtered[1]
+                self.velocity_msg.twist.linear.y = \
+                    self.body_vel_estimation_filtered[2]
+                
                 self.velocity_pub.publish(self.velocity_msg)
 
         if not self.use_depth:
@@ -798,9 +822,9 @@ class FullbodyDetector():
             # translation = (torso_res[0], 0.0, torso_res[2])
             translation = (torso_res[0], torso_res[1], torso_res[2])
         else:   
-            translation = (self.body_filtered_position[1], 
-                            0.0, 
-                            self.body_filtered_position[0])
+            translation = (self.body_filtered_position[0], 
+                           self.body_filtered_position[1], 
+                           self.body_filtered_position[2])
         t = TransformStamped()
         
         t.header.stamp = header.stamp
