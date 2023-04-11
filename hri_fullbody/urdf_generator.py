@@ -1,8 +1,8 @@
 import xacro
-import rospkg
+from ros2pkg.api import get_prefix_path
 from pathlib import Path
 
-TPL = Path(rospkg.RosPack().get_path("human_description")) / "urdf/human-tpl.xacro"
+TPL = Path(get_prefix_path("human_description")) / "share/human_description/urdf/human-tpl.xacro"
 
 
 def make_urdf_human(

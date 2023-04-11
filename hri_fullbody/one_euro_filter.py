@@ -46,6 +46,8 @@ class OneEuroFilter:
         self.x_prev = float(x0)
         self.dx_prev = float(dx0)
         self.t_prev = float(t0)
+        # print("initialized with: ")
+        # print([t0, x0, dx0, min_cutoff, beta, d_cutoff])
 
     def __call__(self, t, x):
         """Compute the filtered signal."""
